@@ -302,6 +302,9 @@
   .card label{display:block;text-align:left;font-family:'Myriad Pro','Myriad Pro Regular','Source Sans 3','Segoe UI',system-ui,sans-serif;font-size:12px;font-weight:600;color:#34495e;margin:0 30px 5px;}
   .card input{width:calc(100% - 60px);padding:12px 13px;border:1px solid #b8c6d5;border-radius:4px;font-family:'Myriad Pro','Myriad Pro Regular','Source Sans 3','Segoe UI',system-ui,sans-serif;font-size:14px;font-weight:400;margin:0 30px 15px;}
   .card input:focus{outline:3px solid rgba(26,115,186,.22);border-color:#0c4f8a;}
+  .card .nameHint{text-align:left;margin:0 30px 16px;font-family:'Myriad Pro','Myriad Pro Regular','Source Sans 3','Segoe UI',system-ui,sans-serif;font-size:12px;line-height:1.45;color:#43566c;}
+  .card .nameHint b{color:#14283d;font-weight:700;}
+  .card .nameHint span{color:#61758a;font-size:11.5px;}
   .card .navctl.primary{width:calc(100% - 60px)!important;margin:10px 30px 30px!important;background:#0c4f8a;border-radius:4px;
     font-family:'Myriad Pro','Myriad Pro Regular','Source Sans 3','Segoe UI',system-ui,sans-serif;font-size:14px;font-weight:700;letter-spacing:.2px;}
   .card .navctl.primary:hover{background:#073b70;}
@@ -429,7 +432,8 @@
     <h2>SAT Reading &amp; Writing Practice</h2>
     <p style="color:var(--muted);font-size:13.5px;">Enter your name and class to begin.</p>
     <label for="nameInput">Full name</label>
-    <input type="text" id="nameInput" placeholder="Full name">
+    <input type="text" id="nameInput" placeholder="FULL NAME" autocomplete="off" autocapitalize="characters" spellcheck="false" style="text-transform:uppercase;margin-bottom:6px;">
+    <div class="nameHint">Auto-formatted in <b>CAPITAL LETTERS</b>, <b>no accents</b>.<br><span>Tên tự động chuyển thành <b>IN HOA</b>, <b>KHÔNG dấu</b>.</span></div>
     <label for="clsInput">Class</label>
     <input type="text" id="clsInput" placeholder="Class">
     <button class="navctl primary" style="width:100%;margin-top:6px;" onclick="startTest()">Start Test</button>
@@ -2043,8 +2047,36 @@ function submitReport(){
   alert("Thanks — your report has been sent.");
 }
 
+/* Tên học sinh: IN HOA + KHÔNG dấu. Chuyển ngay khi gõ/dán (giữ nguyên vị trí con
+   trỏ; mỗi ký tự có dấu đổi thành đúng 1 ký tự không dấu nên không làm rối bộ
+   gõ Unikey/EVKey), bỏ qua lúc bộ gõ IME đang ghép chữ và chuẩn hoá lại lần
+   cuối khi bấm Start Test. */
+function toPlainUpperName(str){
+  return String(str || '')
+    .normalize('NFD').replace(/[\u0300-\u036f]/g, '')
+    .replace(/đ/g, 'd').replace(/Đ/g, 'D')
+    .toUpperCase();
+}
+(function setupNameInput(){
+  const el = document.getElementById('nameInput');
+  if(!el) return;
+  let composing = false;
+  function apply(){
+    const v = el.value, nv = toPlainUpperName(v);
+    if(nv === v) return;
+    const a = el.selectionStart, b = el.selectionEnd;
+    el.value = nv;
+    try{ el.setSelectionRange(a, b); }catch(e){}
+  }
+  el.addEventListener('compositionstart', ()=>{ composing = true; });
+  el.addEventListener('compositionend', ()=>{ composing = false; apply(); });
+  el.addEventListener('input', ()=>{ if(!composing) apply(); });
+  el.addEventListener('blur', apply);
+})();
+
 function startTest(){
-  studentName = document.getElementById('nameInput').value.trim();
+  studentName = toPlainUpperName(document.getElementById('nameInput').value).replace(/\s+/g, ' ').trim();
+  document.getElementById('nameInput').value = studentName;
   studentClass = document.getElementById('clsInput').value.trim();
   if(!studentName){ alert("Please enter your name."); return; }
   document.getElementById('startScreen').style.display = 'none';
